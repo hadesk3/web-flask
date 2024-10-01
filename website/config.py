@@ -1,0 +1,4 @@
+PAYPAL_CLIENT_ID = 'AZeZl8wi8CIspbP-gDFg66Lzn-fFG7WQ78jUJ-VFW_Q7GJRny6Fa1G8ZILsv00iGV9jFb2Dc2V8UCbi-'
+PAYPAL_CLIENT_SECRET = 'ECoYm1b12RziSJ0ERgz3Gw168awX9EwBMTB-Acs8Xu6tWd3ShmGCcFuZ5MKAgJtDQVvqsaT6VU7uCfqo'
+acc = 'sb-xsnfa28860873@personal.example.com'
+Password = 'M!:[2qC.'
