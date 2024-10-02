@@ -1,17 +1,23 @@
-from flask import Flask, redirect, render_template, Blueprint,flash
+from flask import redirect, render_template, Blueprint,flash,request
 from flask_login import login_required, current_user
-from .models import Product
+from .models import Product, Customer, Role, customer_role
 from .forms import ShopItemsForm 
 from . import db,admin_permission
 from werkzeug.utils import secure_filename
+from sqlalchemy.orm import joinedload
+
 admin = Blueprint('admin', __name__)
 @admin.route("/admin",methods = ["GET","POST"])
 @login_required
 @admin_permission.require(http_exception=403)
 def admin_page():
-    products = Product.query.filter().all()
-
-    return render_template('admin.html', product = products)
+    products = Product.query.all()
+    customers_with_role = db.session.query(Customer).\
+        join(customer_role).\
+        join(Role).\
+        filter(Role.name == 'CUSTOMER').\
+        all()
+    return render_template('admin.html', products = products, customers = customers_with_role)
 @admin.route("/add-product",methods = ["GET","POST"])
 @login_required
 @admin_permission.require(http_exception=403)
@@ -48,3 +54,33 @@ def add_product():
     
 
 
+
+@admin.route("/delete-product/<int:product_id>")
+@login_required
+@admin_permission.require(http_exception=403)
+def delete_product(product_id):
+    product = Product.query.get(product_id)
+    if product:
+        db.session.delete(product)
+        db.session.commit()
+        flash("DELETE SUCCESS", "success")
+    else:
+        flash("ERROR", "error")
+    
+    return redirect(request.referrer)  
+
+
+
+@admin.route("/delete-customer/<int:product_id>")
+@login_required
+@admin_permission.require(http_exception=403)
+def delete_customer(product_id):
+    customer = Customer.query.get(product_id)
+    if customer:
+        db.session.delete(customer)
+        db.session.commit()
+        flash("DELETE SUCCESS.", "success")
+    else:
+        flash("ERROR", "error")
+    
+    return redirect(request.referrer)  

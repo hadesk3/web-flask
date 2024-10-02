@@ -9,22 +9,55 @@
         </form>
         <!-- Bảng Sản Phẩm -->
         {% for product in products %}
-                <div class="col-md-6 col-lg-6 col-xl-4">
-                    <div class="rounded position-relative fruite-item">
-                        <div class="fruite-img">
-                            <img src="{{product.product_picture}}" class="img-fluid w-100 rounded-top" alt="">
-                        </div>
-                        <div class="text-white bg-secondary px-3 py-1 rounded position-absolute" style="top: 10px; left: 10px;">{{product.type}}</div>
-                        <div class="p-4 border border-secondary border-top-0 rounded-bottom">
-                            <h4>{{product.name}}</h4>
-                            <div class="d-flex justify-content-between flex-lg-wrap">
-                                <p class="text-dark fs-5 fw-bold mb-0">${{product.current_price}}/ kg</p>
-                                <a href="/add-to-cart/{{product.id}}" class="btn border border-secondary rounded-pill px-3 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
-                            </div>
-                        </div>
-                    </div>
+    <div class="col-md-6 col-lg-6 col-xl-4">
+        <div class="rounded position-relative fruite-item">
+            <div class="fruite-img">
+                <img src="{{ product.product_picture }}" class="img-fluid w-100 rounded-top" alt="">
+            </div>
+            <div class="text-white bg-secondary px-3 py-1 rounded position-absolute" style="top: 10px; left: 10px;">{{ product.type }}</div>
+            <div class="p-4 border border-secondary border-top-0 rounded-bottom">
+                <h4>{{ product.name }}</h4>
+                <div class="d-flex justify-content-between flex-lg-wrap">
+                    <p class="text-dark fs-5 fw-bold mb-0">${{ product.current_price }}/ kg</p>
+                    
+                    <a href="/delete-product/{{ product.id }}" class="btn btn-danger rounded-pill px-3 text-white" onclick="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?');">
+                        <i class="fa fa-trash me-2"></i> Delete
+                    </a>
                 </div>
-                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+    {% endfor %}
+
+    <h1>Danh Sách Đơn Hàng</h1>
+
+            <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Mail</th>
+                    <th scope="col">Date Create</th>
+                    <th scope="col"></th>
+                    
+                  </tr>
+                </thead>
+                <tbody>
+                
+                    {% for customer in customers %}
+                    <tr>
+                        <td scope="row" >{{ customer.id }}</td>
+                        <td>{{ customer.gmail }}</td>
+                        <td>{{ customer.date_create }}</td>
+                        <td><a href="/delete-customer/{{ customer.id }}" class="btn btn-danger rounded-pill px-3 text-white" onclick="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?');">
+                            <i class="fa fa-trash me-2"></i> Delete
+                        </a> 
+                         </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+              </table>
+
 
        
         <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
