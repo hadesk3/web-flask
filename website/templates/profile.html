@@ -36,6 +36,7 @@
   
         </div>
         <h1>Danh Sách Đơn Hàng</h1>
+            {% if orders is not none and orders | length > 0 %}
 
             <table class="table table-hover">
                 <thead>
@@ -62,6 +63,7 @@
                     {% endfor %}
                 </tbody>
               </table>
+              {% endif%}
     </div>
 </div>
 

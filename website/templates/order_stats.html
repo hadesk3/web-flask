@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Statistics</title>
+    <!-- Thư viện CSS cho Flatpickr và Chart.js -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <style>
+        .filters {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Order Statistics</h1>
+    
+    <div class="filters">
+        <button onclick="filterData('today')">Today</button>
+        <button onclick="filterData('week')">This Week</button>
+        <button onclick="filterData('month')">This Month</button>
+        <button onclick="filterData('year')">This Year</button>
+
+        <!-- Date picker để chọn ngày bắt đầu và kết thúc -->
+        <input type="text" id="start_date" placeholder="Start Date">
+        <input type="text" id="end_date" placeholder="End Date">
+        <button onclick="updateData()">Filter</button>
+    </div>
+
+    <!-- Container cho Chart.js -->
+    <canvas id="orderChart" width="400" height="200"></canvas>
+
+    <script>
+        // Cấu hình Flatpickr cho date picker
+        flatpickr("#start_date", {
+            dateFormat: "Y-m-d"
+        });
+
+        flatpickr("#end_date", {
+            dateFormat: "Y-m-d"
+        });
+
+        // Cấu hình biểu đồ Chart.js
+        const ctx = document.getElementById('orderChart').getContext('2d');
+        const orderChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [], // Nhãn cho biểu đồ
+                datasets: [{
+                    label: 'Total Quantity',
+                    data: [], // Dữ liệu tổng số lượng
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }, {
+                    label: 'Total Value',
+                    data: [], // Dữ liệu tổng giá trị
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Hàm để cập nhật dữ liệu biểu đồ từ server
+        function updateChart(data) {
+            orderChart.data.labels = data.labels;
+            orderChart.data.datasets[0].data = data.quantities;
+            orderChart.data.datasets[1].data = data.values;
+            orderChart.update();
+        }
+
+        // Hàm lấy dữ liệu từ Flask dựa trên thời gian lọc
+        function updateData() {
+            const start_date = document.getElementById('start_date').value;
+            const end_date = document.getElementById('end_date').value;
+
+            fetch('/get_order_stats', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ start_date, end_date })
+            })
+            .then(response => response.json())
+            .then(data => {
+                updateChart(data);
+            });
+        }
+
+        // Hàm lọc dữ liệu theo các khoảng thời gian Today, Week, Month, Year
+        function filterData(period) {
+            const today = new Date();
+            let start_date, end_date;
+
+            switch (period) {
+                case 'today':
+                    start_date = today.toISOString().split('T')[0];
+                    end_date = start_date;
+                    break;
+                case 'week':
+                    const firstDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
+                    start_date = firstDayOfWeek.toISOString().split('T')[0];
+                    end_date = new Date().toISOString().split('T')[0];
+                    break;
+                case 'month':
+                    start_date = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+                    end_date = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+                    break;
+                case 'year':
+                    start_date = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
+                    end_date = new Date(today.getFullYear(), 11, 31).toISOString().split('T')[0];
+                    break;
+            }
+
+            document.getElementById('start_date').value = start_date;
+            document.getElementById('end_date').value = end_date;
+
+            updateData(); // Cập nhật biểu đồ với khoảng thời gian mới
+        }
+    </script>
+</body>
+</html>

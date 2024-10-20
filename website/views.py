@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template,request,redirect,flash,jsonify
-from .models import Product, Cart, Order,Customer
+from .models import Product, Cart, Order,Customer,Role
 from flask_login import current_user,login_required
 from . import db,customer_permission
+from sqlalchemy import func
+
 views = Blueprint("view", __name__)
 
 
@@ -24,10 +26,12 @@ def roles_required(*roles):
 
 @views.route("/")
 def home():
-    return render_template("index.html",cart = Cart.query.filter_by(customer_link = current_user.id).all() if current_user.is_authenticated else [])
+    products = top_popular()
+    return render_template("index.html", cart = Cart.query.
+                           filter_by(customer_link = current_user.id).
+                           all() if current_user.is_authenticated else [], products = products  )
 @views.route('/profile')
 @login_required
-
 def profile():
     id = current_user.id
     customer = Customer.query.get(id)
@@ -177,10 +181,7 @@ def pay():
     else:
         # Ghi lại thông tin lỗi
         logging.error(f"Error while creating payment: {payment.error}")
-        print("==== Đây là thông tin debug ====")
-        print('===============================', payment.error)
-        
-        # Thông báo lỗi cho người dùng
+
         return 'Error while creating payment', 400
 @views.route('/execute')
 @login_required
@@ -219,3 +220,161 @@ def payment_execute():
 
 
 
+@views.route('/search', methods = ['GET','POST'])
+def search():
+    if request.method == 'POST':
+        data = request.form.get('search')
+        products = Product.query.filter(Product.name.ilike(f'%{data}%')).all()
+        return render_template('search.html',products = products)
+    return redirect(request.referrer)
+
+
+from . import cache
+@cache.cached(timeout = 3600)
+def top_popular():
+    top_10 = db.session.query\
+        (Product.name.label('name'), func.sum(Order.quantity).label('quantity'), func.date(Order.date_order).label('date')).\
+        join(Product, Order.product_link == Product.id).\
+        group_by(Order.id, func.date(Order.date_order))\
+        .subquery()
+    product = db.session.query(Product).join(top_10, Product.name == top_10.c.name).order_by(func.date(top_10.c.date).desc(),top_10.c.quantity.desc()).limit(6)
+    for i in product:
+        logging.info(f"name : {i.name}" )
+
+
+    subquery = (
+    db.session.query(
+        Order.product_link,
+        func.date(Order.date_order).label('order_date'),
+        func.sum(Order.quantity).label('total_quantity')
+    )
+    .group_by(Order.product_link, func.date(Order.date_order))
+    .subquery()
+    )
+
+    
+    results = (
+        db.session.query(
+            Product.name.label('product_name'),
+            subquery.c.order_date,
+            subquery.c.total_quantity
+        )
+        .join(subquery, Product.id == subquery.c.product_link)
+        .order_by( subquery.c.order_date.desc(),subquery.c.total_quantity.desc() )
+        .all()
+    )
+
+    # In kết quả
+    for result in results:
+        logging.info(f"Product: {result.product_name}, Order Date: {result.order_date}, Total Quantity: {result.total_quantity}")
+    return [{'id': p.id,'name': p.name,  'picture': p.product_picture, 'price': p.current_price } for p in product]
+
+"""
+import json
+from redis import Redis
+from rq import Queue
+from kafka import KafkaProducer
+
+
+redis_conn = Redis(host='redis', port=6379, db=0)
+queue = Queue(connection=redis_conn)
+
+# Kết nối đến Kafka
+kafka_producer = KafkaProducer(bootstrap_servers='kafka:9092')
+
+
+
+def send_email(order_data):
+    # Logic gửi email xác nhận đơn hàng
+    print(f"Sending email for order {order_data['order_id']} to {order_data['customer_email']}")
+
+    # Ghi log sự kiện vào Kafka
+    kafka_producer.send('order_events', json.dumps(order_data).encode('utf-8'))
+    kafka_producer.flush()
+    print(f"Logged order {order_data['order_id']} event to Kafka.")
+
+@views.route('/test', methods=['GET'])
+def place_order():
+    order_data = {"order_id": 123, "customer_email": "customer@example.com"}
+    queue.enqueue(send_email, order_data)
+    return 'Order placed successfully!', 201    
+"""
+
+from elasticsearch import Elasticsearch
+from datetime import  datetime
+es = Elasticsearch("http://172.20.0.5:9200")
+@login_required
+@views.route('/subscribe', methods=['POST'])
+def sub():
+    try:
+        if es.ping():
+            print("Connected to Elasticsearch")
+        else:
+            print("Could not connect to Elasticsearch")
+    except Exception as e:
+        logging.error(f"Error connecting to Elasticsearch: {e}")
+        return redirect(request.referrer)
+
+    id = current_user.id
+    customer = Customer.query.get(id)
+    s = customer.gmail
+
+    # Kiểm tra xem s có giá trị không
+    if not s:
+        logging.error("Customer email is empty")
+        return redirect(request.referrer)
+
+    email_data = {
+        'email': s,
+        'timestamp': datetime.utcnow()
+    }
+
+    try:
+        es.index(index='emails', id=s, document=email_data)
+        print("Document indexed successfully")
+    except Exception as e:
+        logging.error(f"Error indexing document: {e}")
+
+    return redirect(request.referrer)
+
+
+from kafka import KafkaProducer
+import json
+
+# Kết nối đến Kafka
+producer = KafkaProducer(
+    bootstrap_servers='kafka:9092',
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
+def send_email_notification(email, subject, message):
+    # Thông báo email
+    notification = {
+        'email': email,
+        'subject': subject,
+        'message': message,
+        'timestamp': datetime.utcnow()
+    }
+    producer.send('send-email', notification)
+    producer.flush()
+
+
+@views.route('/test')
+def ts():
+    send_email_notification('phamha2003j@gmail.com', "check", 'check')
+    return render_template('shop-detail.html')
+producer = KafkaProducer(
+    bootstrap_servers='kafka:9092',
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
+
+
+from flask import Flask, current_app
+
+@views.route('/test2')
+def ts2():
+    notification = {
+        'level': 'info',
+        'message': 'check'
+    }
+    producer.send('logs',notification)
+    return 'Hello, Flask with Kafka logging!'

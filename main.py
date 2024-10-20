@@ -1,6 +1,6 @@
 from website import create_app
 from flask_principal import Principal,Permission, RoleNeed,UserNeed,identity_changed,identity_loaded,Identity,AnonymousIdentity
-
+from flask import Flask
 app = create_app()
 principal = Principal(app)
 

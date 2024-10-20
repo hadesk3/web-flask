@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{%block body%}
+{%if products | length == 0 %}
+ <h1 >   Don't have Product</h1>
+{%endif%}
+<div class="col-lg-9">
+    <div class="row g-4 justify-content-center">
+        {% for product in products %}
+        <div class="col-md-6 col-lg-6 col-xl-4">
+            <div class="rounded position-relative fruite-item">
+                <div class="fruite-img">
+                    <img src="{{product.product_picture}}" class="img-fluid w-100 rounded-top" alt="">
+                </div>
+                <div class="text-white bg-secondary px-3 py-1 rounded position-absolute" style="top: 10px; left: 10px;">{{product.type}}</div>
+                <div class="p-4 border border-secondary border-top-0 rounded-bottom">
+                    <h4>{{product.name}}</h4>
+                    <div class="d-flex justify-content-between flex-lg-wrap">
+                        <p class="text-dark fs-5 fw-bold mb-0">${{product.current_price}}/ kg</p>
+                        <a href="/add-to-cart/{{product.id}}" class="btn border border-secondary rounded-pill px-3 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+{%endblock%}

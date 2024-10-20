@@ -17,7 +17,6 @@ class Customer(db.Model, UserMixin):
     order_item = db.relationship('Order', backref=db.backref('customer', lazy=True))
 
     roles  = db.relationship('Role',secondary = customer_role, backref=db.backref('customer', lazy='dynamic'))
-
     @property
     def password(self):
         raise AttributeError('Password is not a readable Attribute')
@@ -66,3 +65,4 @@ class Order(db.Model):
     date_order = db.Column(db.DateTime(), default=datetime.now())
     customer_link = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
     product_link = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+

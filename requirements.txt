@@ -10,3 +10,8 @@ Flask-WTF==1.2.1
 mysql-connector-python
 Flask-Principal
 paypalrestsdk
+Flask-Caching==2.3.0
+redis
+rq
+kafka-python
+elasticsearch==7.11.0

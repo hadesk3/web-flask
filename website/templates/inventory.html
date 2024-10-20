@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background-color: #fff;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .stat-box {
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-box h2 {
+            font-size: 24px;
+            margin: 0;
+        }
+        .stat-box p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+        canvas {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Inventory Management Dashboard</h1>
+    <div class="container">
+        <!-- Inventory Statistics Section -->
+        <div class="stats">
+            <div class="stat-box">
+                <h2 id="totalItems">0</h2>
+                <p>Total Items</p>
+            </div>
+            <div class="stat-box">
+                <h2 id="totalQuantity">0</h2>
+                <p>Total Quantity</p>
+            </div>
+            <div class="stat-box">
+                <h2 id="totalValue">$0</h2>
+                <p>Total Inventory Value</p>
+            </div>
+        </div>
+
+        <!-- Product Table Section -->
+        <h2>Inventory List</h2>
+        <table id="inventoryTable">
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total Value</th>
+                </tr>
+            </thead>
+            <tbody>
+               
+            </tbody>
+        </table>
+
+        <!-- Chart Section -->
+        <canvas id="inventoryChart" width="400" height="200"></canvas>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // This data would be dynamically passed from Flask
+        const inventoryData = {{ inventory_data|safe }};
+        
+        function renderTable(inventory) {
+            const tableBody = document.querySelector("#inventoryTable tbody");
+            let totalQuantity = 0;
+            let totalValue = 0;
+
+            tableBody.innerHTML = ""; // Clear previous rows
+
+            inventory.forEach(product => {
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${product.quantity}</td>
+                    <td>$${product.price.toFixed(2)}</td>
+                    <td>$${(product.quantity * product.price).toFixed(2)}</td>
+                `;
+
+                tableBody.appendChild(row);
+
+                // Calculate total quantity and value
+                totalQuantity += product.quantity;
+                totalValue += product.quantity * product.price;
+            });
+
+            document.getElementById("totalItems").innerText = inventory.length;
+            document.getElementById("totalQuantity").innerText = totalQuantity;
+            document.getElementById("totalValue").innerText = `$${totalValue.toFixed(2)}`;
+        }
+
+        function renderChart(inventory) {
+            const ctx = document.getElementById('inventoryChart').getContext('2d');
+            const labels = inventory.map(product => product.name);
+            const quantities = inventory.map(product => product.quantity);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Quantity',
+                        data: quantities,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize dashboard with Flask data
+        renderTable(inventoryData);
+        renderChart(inventoryData);
+    </script>
+</body>
+</html>
+
+

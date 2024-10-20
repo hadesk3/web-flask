@@ -1,6 +1,8 @@
 # Sử dụng image Python làm cơ sở
 FROM python:3.9
+RUN apt-get update && apt-get install -y netcat-openbsd
 
+WORKDIR /app
 COPY requirements.txt .
 
 # Cài đặt các thư viện cần thiết
@@ -14,4 +16,4 @@ COPY . .
 EXPOSE 5000
 
 # Chạy ứng dụng Flask
-CMD ["python", "main.py"]
+

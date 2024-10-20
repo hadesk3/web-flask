@@ -3,27 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Application</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+    <title>Chat Room</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Import Socket.IO client library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
 </head>
 <body>
-    <h1>Chat Application</h1>
-    <input id="message" placeholder="Enter your message" />
-    <button id="send">Send</button>
-    <div id="chat"></div>
+    <h2>Welcome {{ name }} ({{ role }})</h2>
+    
+    <!-- Hiển thị tên phòng chat cho admin nhập -->
+    {% if role == 'CUSTOMER' %}
+        <p>You are in the customer chat room.</p>
+    {% else %}
+        <label for="room">Enter customer room to join:</label>
+        <input type="text" id="room" placeholder="Enter customer name's room...">
+        <button onclick="joinRoom()">Join Room</button>
+        <br><br>
+    {% endif %}
 
-    <script>
-        const socket = io();
+    <!-- Vùng chat container -->
+    <div id="chat-container">
+        <div id="chat-box">
+            <!-- Tin nhắn sẽ hiển thị ở đây -->
+        </div>
+        <input type="text" id="message" placeholder="Enter your message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
 
-        document.getElementById('send').onclick = function() {
-            const message = document.getElementById('message').value;
-            socket.emit('send_message', { message: message });
-            document.getElementById('message').value = '';
-        };
+    <script type="text/javascript">
+        // Kết nối tới server qua socket
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
 
-        socket.on('receive_message', function(data) {
-            const chat = document.getElementById('chat');
-            chat.innerHTML += `<p>${data.message}</p>`;
+        // Lấy thông tin người dùng và role từ Jinja template
+        var name = "{{ name }}";
+        var role = "{{ role }}";
+        var room = role === 'CUSTOMER' ? name : '';
+
+        // Nếu là customer, tự động tham gia phòng dựa trên tên khách hàng
+        if (role === 'CUSTOMER') {
+            joinRoom();
+        }
+
+        // Hàm tham gia phòng chat (admin nhập vào tên phòng)
+        function joinRoom() {
+            if (role === 'ADMIN') {
+                room = document.getElementById('room').value;
+            }
+            if (room) {
+                socket.emit('join', {'name': name, 'role': role, 'room': room});
+            }
+        }
+
+        // Hàm gửi tin nhắn lên server
+        function sendMessage() {
+            var msg = document.getElementById('message').value;
+            if (msg.trim() !== "") {
+                socket.emit('message', {'msg': msg, 'room': room});
+                document.getElementById('message').value = '';  // Xóa nội dung ô nhập sau khi gửi
+            }
+        }
+
+        // Nhận tin nhắn từ server và hiển thị lên giao diện
+        socket.on('message', function(msg) {
+            var chatBox = document.getElementById('chat-box');
+            var newMessage = document.createElement('p');
+            newMessage.textContent = msg;
+            chatBox.appendChild(newMessage);
+        });
+
+        // Rời phòng chat khi đóng cửa sổ trình duyệt
+        window.addEventListener("beforeunload", function () {
+            socket.emit('leave', {'name': name, 'room': room});
         });
     </script>
 </body>

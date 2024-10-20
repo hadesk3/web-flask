@@ -1,20 +1,6 @@
+version: '3.7'
+
 services:
-  web:
-    build: .
-    container_name: flask-app
-    ports:
-      - "5000:5000"
-    environment:
-      MYSQL_USER: root
-      MYSQL_PASSWORD: rootpassword
-      MYSQL_HOST: db
-      MYSQL_DATABASE: flaskdb
-      FLASK_ENV: development
-      FLASK_DEBUG: 1
-    depends_on:
-      - db
-
-
 
   db:
     image: mysql:8.0.33
@@ -24,8 +10,148 @@ services:
       MYSQL_DATABASE: flaskdb
     ports:
       - "3307:3306"
+    networks:
+      - es-net
     volumes:
       - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+
+  redis:
+    image: "redis:latest"
+    container_name: "redis"
+    ports:
+      - "6379:6379"
+    networks:
+      - es-net
+    volumes:
+      - redis_data:/data
+    environment:
+      - REDIS_PASSWORD=
+
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    ports:
+      - "2181:2181"
+    networks:
+      - es-net
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper
+
+  kafka:
+    image: wurstmeister/kafka:latest
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:9093
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+    networks:
+      - es-net
+    depends_on:
+      - zookeeper
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+
+  kafka-rest:
+    image: confluentinc/cp-kafka-rest:latest
+    ports:
+      - "8082:8082"
+    environment:
+      KAFKA_REST_BOOTSTRAP_SERVERS: "kafka:9092"
+      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
+    networks:
+      - es-net
+
+  elasticsearch:
+    container_name: es-container
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.11.0
+    environment:
+      - xpack.security.enabled=false
+      - "discovery.type=single-node"
+    networks:
+      - es-net
+    ports:
+      - 9200:9200
+  kibana:
+    container_name: kb-container
+    image: docker.elastic.co/kibana/kibana:7.11.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://es-container:9200
+    networks:
+      - es-net
+    depends_on:
+      - elasticsearch
+    ports:
+      - 5601:5601
+
+  web:
+    build: .
+    command: ./wait_for_kafka.sh flask run --host=0.0.0.0 --port=5000
+    container_name: flask-app
+    ports:
+      - "5000:5000"
+    environment:
+      MYSQL_USER: root
+      MYSQL_PASSWORD: rootpassword
+      MYSQL_HOST: db
+      MYSQL_DATABASE: flaskdb
+      FLASK_APP: main.py
+      FLASK_ENV: development
+      FLASK_DEBUG: 1
+    networks:
+      - es-net
+    depends_on:
+      - db
+      - redis
+      - kafka
+    volumes:
+      - .:/app
+
+ 
+  consumer-log:
+    build: .
+    command: python Consume_log.py
+    depends_on:
+      - kafka
+    networks:
+      - es-net
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+
+  consumer-mail:
+    build: .
+    command: python Consume_send_mail.py
+    depends_on:
+      - kafka
+    networks:
+      - es-net
+
+  consumer-status:
+    build: .
+    command: python Consume_status.py
+    depends_on:
+      - kafka
+    networks:
+      - es-net  
+networks:
+  es-net:
+    driver: bridge
 
 volumes:
   db_data:
+  redis_data:
+  kafka_data:
+  zookeeper_data:
